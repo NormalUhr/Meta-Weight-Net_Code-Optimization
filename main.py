@@ -1,14 +1,13 @@
 import argparse
 import torch.optim
-# from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 from meta import *
 from model import *
 from noisy_long_tail_CIFAR import *
 from utils import *
 
-
 parser = argparse.ArgumentParser(description='Meta_Weight_Net')
-parser.add_argument('--device', type=str, default='cuda')
+parser.add_argument('--device', type=str, default='cpu')
 parser.add_argument('--seed', type=int, default=1)
 parser.add_argument('--meta_net_hidden_size', type=int, default=100)
 parser.add_argument('--meta_net_num_layers', type=int, default=1)
@@ -39,7 +38,7 @@ print(args)
 def meta_weight_net():
     set_cudnn(device=args.device)
     set_seed(seed=args.seed)
-#     writer = SummaryWriter(log_dir='.\\mwn')
+    #     writer = SummaryWriter(log_dir='.\\mwn')
 
     meta_net = MLP(hidden_size=args.meta_net_hidden_size, num_layers=args.meta_net_num_layers).to(device=args.device)
     net = ResNet32(args.dataset == 'cifar10' and 10 or 100).to(device=args.device)
@@ -68,11 +67,11 @@ def meta_weight_net():
     )
 
     meta_dataloader_iter = iter(meta_dataloader)
-#     with torch.no_grad():
-#         for point in range(500):
-#             x = torch.tensor(point / 10).unsqueeze(0).to(args.device)
-#             fx = meta_net(x)
-#             writer.add_scalar('Initial Meta Net', fx, point)
+    #     with torch.no_grad():
+    #         for point in range(500):
+    #             x = torch.tensor(point / 10).unsqueeze(0).to(args.device)
+    #             fx = meta_net(x)
+    #             writer.add_scalar('Initial Meta Net', fx, point)
 
     for epoch in range(args.max_epoch):
 
@@ -82,7 +81,7 @@ def meta_weight_net():
             group['lr'] = lr
 
         print('Training...')
-        for iteration, (inputs, labels) in enumerate(train_dataloader):
+        for iteration, (inputs, labels) in tqdm(enumerate(train_dataloader)):
             net.train()
             inputs, labels = inputs.to(args.device), labels.to(args.device)
 
@@ -139,8 +138,8 @@ def meta_weight_net():
             criterion=criterion,
             device=args.device,
         )
-#         writer.add_scalar('Loss', test_loss, epoch)
-#         writer.add_scalar('Accuracy', test_accuracy, epoch)
+        print('Loss', test_loss, epoch)
+        print('Accuracy', test_accuracy, epoch)
 
         print('Epoch: {}, (Loss, Accuracy) Test: ({:.4f}, {:.2%}) LR: {}'.format(
             epoch,
@@ -149,14 +148,13 @@ def meta_weight_net():
             lr,
         ))
 
-#         if (epoch + 1) % args.paint_interval == 0:
-#             with torch.no_grad():
-#                 for point in range(500):
-#                     x = torch.tensor(point / 10).unsqueeze(0).to(args.device)
-#                     fx = meta_net(x)
-#                     writer.add_scalar('Meta Net of Epoch {}'.format(epoch), fx, point)
-
-#     writer.close()
+        if (epoch + 1) % args.paint_interval == 0:
+            with torch.no_grad():
+                for point in range(500):
+                    x = torch.tensor(point / 10).unsqueeze(0).to(args.device)
+                    fx = meta_net(x)
+                    print('Meta Net of Epoch {}'.format(epoch), fx, point)
+#
 
 
 if __name__ == '__main__':
